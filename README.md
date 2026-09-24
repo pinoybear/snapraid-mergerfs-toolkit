@@ -90,6 +90,35 @@ sequenceDiagram
 
 Unpause and exiting maintenance run from an `EXIT` trap, so they happen even if the sync fails or the script is killed.
 
+## Reference environment
+
+This toolkit was built for, and is tested against, a setup like this — it's the reason several of the config options exist:
+
+```mermaid
+flowchart TB
+    subgraph HV["Proxmox VE host — runs SnapRAID + this toolkit"]
+        MFS["mergerfs pool<br/>(4 data disks + 1 parity)"]
+    end
+    subgraph VM["Docker VM — separate guest"]
+        C1["sonarr / radarr / *arr"]
+        C2["nextcloud / immich / ..."]
+    end
+    subgraph LXC["Lightweight LXCs"]
+        N["ntfy<br/>(notifications)"]
+        K["Uptime Kuma<br/>(monitoring)"]
+    end
+
+    MFS -. "NFS / virtiofs" .-> VM
+    HV -- "docker pause/unpause<br/>over SSH (DOCKER_SSH_DEST)" --> VM
+    HV -- "alerts" --> N
+    HV -- "maintenance windows" --> K
+```
+
+- **SnapRAID and this toolkit run on the hypervisor** (a Proxmox VE host, though nothing here is Proxmox-specific), directly against a mergerfs pool of data disks + a parity disk. Running at this layer, rather than inside a VM, means array maintenance never depends on any guest being up.
+- **Docker runs in a separate VM**, not on the host. The array is exposed to it over NFS or virtiofs, not a raw disk passthrough. This is why `snapraid-sync.sh` pauses containers over SSH (`DOCKER_SSH_DEST`) instead of calling `docker` directly, and why every remote `docker inspect` call uses one plain template field — see the design notes at the top of that script for the exact failure that came from combining fields in one call.
+- **Small services get their own lightweight LXC** rather than sharing the Docker VM's blast radius: a notification relay (ntfy) and a monitoring/maintenance-window tool (Uptime Kuma) are the two this toolkit talks to. Host-originated alerts (a failed sync) reaching ntfy this way don't depend on the Docker VM or anything in it being up.
+- **None of this is required.** Everything above is configurable or optional: run Docker on the same host and leave `DOCKER_SSH_DEST` empty, skip `PAUSE_CONTAINERS` entirely if nothing writes to the array, or drop `ARR_INSTANCES`/`KUMA_MAINTENANCE` if you don't run those. The scripts were written generic; this section just explains where the specific features came from.
+
 ## Quick start
 
 This gets a nightly, container-aware sync running with ntfy alerts. It assumes SnapRAID is already set up: `/etc/snapraid.conf` exists and `sudo snapraid status` works. If not, start from [`config/snapraid.conf.example`](config/snapraid.conf.example).
