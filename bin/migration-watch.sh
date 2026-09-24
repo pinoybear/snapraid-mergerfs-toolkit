@@ -10,8 +10,8 @@
 #               'balance' mode, live df output) every POLL_INTERVAL
 #               seconds, extracts a completion percentage, and sends a
 #               notification each time a new 10% decile is crossed.
-#               Interim deciles: email only. Completion (100% / done
-#               marker seen): email + ntfy.
+#               Every notification goes to both email and ntfy (deciles
+#               and success at low priority, failure urgent).
 #
 #               Designed to run inside tmux alongside the real command,
 #               e.g.:

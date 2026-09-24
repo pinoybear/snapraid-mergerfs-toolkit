@@ -8,16 +8,18 @@ Every script here exists because something simpler failed in practice. The desig
 
 | Script | What it does |
 |---|---|
-| `bin/snapraid-sync.sh` | Nightly `touch` + `sync`. Before syncing it waits for in-flight Sonarr/Radarr/Lidarr imports to finish, optionally puts Uptime Kuma into maintenance, and `docker pause`s the containers that write to the array (locally or over SSH). Afterwards it **always** unpauses them, verifies they return healthy, and exits maintenance, even if the sync fails. Checks parity disk fill level. Logs data volume and throughput per run. |
-| `bin/snapraid-scrub-trigger.sh` | Day-gate that runs after every *successful* sync (systemd `OnSuccess=`) and hands off to the scrub once N days have passed. There's no fixed-time scrub timer that could race a long sync. |
-| `bin/snapraid-scrub.sh` | `snapraid scrub -p N`, then appends `snapraid status` to the log. |
-| `bin/snapraid-check.sh` | Manual full `snapraid check` with live output, a log, and a summary notification. |
-| `bin/migration-watch.sh` | Progress notifier for long manual jobs (rsync onto a new disk, `snapraid sync/scrub`, `mergerfs.balance`, or anything that writes a done marker). Sends a notification at each 10% with an ETA, and another on completion or failure. |
-| `bin/sync-guard.sh` | Crash and stall detector for a long command running in the foreground of an interactive tmux pane. Pairs with `migration-watch.sh`. |
-| `bin/balance-monitor.sh` | Live terminal dashboard for `mergerfs.balance`: per-branch usage, free-space spread, progress, and ETA, with periodic ntfy pushes. |
-| `bin/kuma-maintenance.py` | Optional. Toggles an Uptime Kuma *Manual* maintenance window from scripts. |
+| [`bin/snapraid-sync.sh`](docs/snapraid-sync.md) | Nightly `touch` + `sync`. Before syncing it waits for in-flight Sonarr/Radarr/Lidarr imports to finish, optionally puts Uptime Kuma into maintenance, and `docker pause`s the containers that write to the array (locally or over SSH). Afterwards it **always** unpauses them, verifies they return healthy, and exits maintenance, even if the sync fails. Checks parity disk fill level. Logs data volume and throughput per run. |
+| [`bin/snapraid-scrub-trigger.sh`](docs/snapraid-scrub.md) | Day-gate that runs after every *successful* sync (systemd `OnSuccess=`) and hands off to the scrub once N days have passed. There's no fixed-time scrub timer that could race a long sync. |
+| [`bin/snapraid-scrub.sh`](docs/snapraid-scrub.md) | `snapraid scrub -p N`, then appends `snapraid status` to the log. |
+| [`bin/snapraid-check.sh`](docs/snapraid-check.md) | Manual full `snapraid check` with live output, a log, and a summary notification. |
+| [`bin/migration-watch.sh`](docs/migration-watch.md) | Progress notifier for long manual jobs (rsync onto a new disk, `snapraid sync/scrub`, `mergerfs.balance`, or anything that writes a done marker). Sends a notification at each 10% with an ETA, and another on completion or failure. |
+| [`bin/sync-guard.sh`](docs/sync-guard.md) | Crash and stall detector for a long command running in the foreground of an interactive tmux pane. Pairs with `migration-watch.sh`. |
+| [`bin/balance-monitor.sh`](docs/balance-monitor.md) | Live terminal dashboard for `mergerfs.balance`: per-branch usage, free-space spread, progress, and ETA, with periodic ntfy pushes. |
+| [`bin/kuma-maintenance.py`](docs/kuma-maintenance.md) | Optional. Toggles an Uptime Kuma *Manual* maintenance window from scripts. |
 
 Notifications go to [ntfy](https://ntfy.sh) and/or email via `msmtp`. Either can be disabled.
+
+Each script has its own page with every option, example output and what each alert means: see [**docs/**](docs/README.md).
 
 ## Requirements
 
