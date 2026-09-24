@@ -22,6 +22,6 @@ One page per tool. Each covers what it does, every option, what the log output l
 ## Shared behavior
 
 - **Config:** every script sources `/etc/snapraid-toolkit.conf` (override with `SNAPRAID_TOOLKIT_CONF=/path`). See [`config/snapraid-toolkit.conf.example`](../config/snapraid-toolkit.conf.example).
-- **Notifications:** ntfy (`NTFY_URL`, optional `NTFY_TOKEN`) and/or email via msmtp (`EMAIL_TO`, `MSMTP_ACCOUNT`). An empty setting disables that channel; both can be on at once.
+- **Notifications:** ntfy (`NTFY_URL`, optional `NTFY_TOKEN`) and/or email via msmtp (`EMAIL_TO`, `MSMTP_ACCOUNT`). An empty setting disables that channel; both can be on at once. To set up ntfy or msmtp, and to test both with one command, see [homelab-notifications](https://github.com/pinoybear/homelab-notifications).
 - **Log format:** `YYYY-MM-DD HH:MM:SS - [TAG] message`. The nightly scripts share `/var/log/snapraid.log`, tagged `[SYNC]`, `[SCRUB-TRIGGER]` and `[SCRUB]`.
 - **Root:** the SnapRAID scripts refuse to run as a non-root user.

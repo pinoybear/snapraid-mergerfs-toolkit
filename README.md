@@ -17,7 +17,7 @@ Every script here exists because something simpler failed in practice. The desig
 | [`bin/balance-monitor.sh`](docs/balance-monitor.md) | Live terminal dashboard for `mergerfs.balance`: per-branch usage, free-space spread, progress, and ETA, with periodic ntfy pushes. |
 | [`bin/kuma-maintenance.py`](docs/kuma-maintenance.md) | Optional. Toggles an Uptime Kuma *Manual* maintenance window from scripts. |
 
-Notifications go to [ntfy](https://ntfy.sh) and/or email via `msmtp`. Either can be disabled.
+Notifications go to [ntfy](https://ntfy.sh) and/or email via `msmtp`. Either can be disabled. Setup for both is covered in [homelab-notifications](https://github.com/pinoybear/homelab-notifications).
 
 Each script has its own page with every option, example output and what each alert means: see [**docs/**](docs/README.md).
 
