@@ -22,31 +22,137 @@ Notifications go to [ntfy](https://ntfy.sh) and/or email via `msmtp`. Either can
 ## Requirements
 
 - `snapraid`, `bash` ≥ 4.4, `curl`, `python3` (used to parse *arr API JSON)
+- systemd ≥ 249 (for `OnSuccess=`, which chains the scrub to the sync)
 - Optional: `msmtp` (email), `docker` locally or reachable over key-based SSH, `tmux` (sync-guard), `bc` + `mergerfs-tools` (balance tools), `uptime-kuma-api` Python package (Kuma helper)
 
-## Install
+## How it works
+
+Every night a systemd timer starts the sync. Only a **successful** sync triggers the scrub check, so a scrub can never overlap a sync, however long it runs.
+
+```mermaid
+flowchart TD
+    T["snapraid-sync.timer<br/>nightly 01:35"] --> S["snapraid-sync.service<br/>snapraid-sync.sh"]
+
+    subgraph SYNC["snapraid-sync.sh"]
+        direction TB
+        L{"sync or scrub<br/>already running?"} -- yes --> X["exit, try tomorrow"]
+        L -- no --> P["check parity mount<br/>and fill level"]
+        P --> A["wait for *arr imports<br/>to finish (optional)"]
+        A --> K["enter Uptime Kuma<br/>maintenance (optional)"]
+        K --> PC["docker pause<br/>PAUSE_CONTAINERS"]
+        PC --> TS["snapraid touch + sync"]
+        TS --> C["cleanup, always runs:<br/>unpause, health-check,<br/>exit Kuma maintenance"]
+    end
+
+    S --> L
+    C -- "sync OK" --> G["snapraid-scrub-check.service<br/>(OnSuccess=)"]
+    C -- "sync failed" --> N["ntfy / email alert<br/>with snapraid diff"]
+    G --> D{"last scrub<br/>older than 7 days?"}
+    D -- no --> Z["skip"]
+    D -- yes --> SC["snapraid-scrub.sh<br/>scrub -p 8, then status"]
+    SC -- failed --> N
+```
+
+The container pause is what makes an unattended sync reliable. SnapRAID fails a sync if a file changes while it's being read, so anything that writes to the array is frozen (`docker pause`, not stopped, so they resume in seconds) for the duration of the sync:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant H as Array host<br/>(runs snapraid)
+    participant D as Docker host<br/>(local or via SSH)
+    participant R as Sonarr / Radarr API
+    participant U as Uptime Kuma
+
+    opt ARR_INSTANCES configured
+        H->>D: cat config.xml (read API key)
+        H->>R: GET /api/v3/command
+        R-->>H: import running? wait and re-poll (max 2 min)
+    end
+    opt KUMA_MAINTENANCE configured
+        H->>U: enter maintenance
+    end
+    loop each PAUSE_CONTAINER that is running
+        H->>D: docker pause
+        H->>D: docker inspect (confirm it is paused)
+    end
+    Note over H: snapraid touch + sync
+    loop each paused container
+        H->>D: docker unpause
+    end
+    loop round-robin until all healthy (max 5 min)
+        H->>D: docker inspect status / health
+    end
+    opt KUMA_MAINTENANCE configured
+        H->>U: exit maintenance
+    end
+    Note over H: any stuck container or failed exit sends an alert
+```
+
+Unpause and exiting maintenance run from an `EXIT` trap, so they happen even if the sync fails or the script is killed.
+
+## Quick start
+
+This gets a nightly, container-aware sync running with ntfy alerts. It assumes SnapRAID is already set up: `/etc/snapraid.conf` exists and `sudo snapraid status` works. If not, start from [`config/snapraid.conf.example`](config/snapraid.conf.example).
+
+**1. Install the scripts and units**
 
 ```bash
 git clone https://github.com/pinoybear/snapraid-mergerfs-toolkit.git
 cd snapraid-mergerfs-toolkit
-
 sudo install -m 755 bin/* /usr/local/bin/
-sudo install -m 600 config/snapraid-toolkit.conf.example /etc/snapraid-toolkit.conf
-sudo vi /etc/snapraid-toolkit.conf          # set NTFY_URL / EMAIL_TO / PAUSE_CONTAINERS ...
-
 sudo install -m 644 systemd/*.service systemd/*.timer /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now snapraid-sync.timer
+sudo install -m 600 config/snapraid-toolkit.conf.example /etc/snapraid-toolkit.conf
 ```
 
-Do a test run first and watch the log:
+**2. Set the minimum config** in `/etc/snapraid-toolkit.conf`:
 
 ```bash
-sudo systemctl start snapraid-sync.service
+NTFY_URL="https://ntfy.sh/your-private-topic"   # and/or EMAIL_TO="you@example.com"
+PARITY_MOUNT="/mnt/parity1"                     # your parity disk's mount point
+PAUSE_CONTAINERS=(sonarr radarr nextcloud-app)  # containers that write to the array
+```
+
+Leave `PAUSE_CONTAINERS=()` empty if nothing writes to the array during the sync window. Everything else is optional; see [Configuration](#configuration).
+
+**3. Check that notifications arrive**
+
+```bash
+curl -d "snapraid-toolkit test" "https://ntfy.sh/your-private-topic"
+```
+
+**4. Run one sync by hand and watch it**
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start --no-block snapraid-sync.service   # returns immediately; the sync runs in the background
 sudo tail -f /var/log/snapraid.log
 ```
 
-`config/snapraid.conf.example` is a starting point for `/etc/snapraid.conf` with exclusions for files that are always changing (WALs, journals, caches).
+A healthy run logs roughly:
+
+```
+[SYNC] Starting SnapRAID Sync on myserver...
+[SYNC] Pausing active write containers to prevent file churn...
+[SYNC] Paused container: sonarr
+[SYNC] Running snapraid touch...
+[SYNC] Running snapraid sync...
+[SYNC] Sync data volume: ~2048 MB moved in 95s (~21 MB/s wall-clock avg).
+[SYNC] Sync Complete Successfully.
+[SYNC] Unpausing and verifying containers...
+[SYNC] Container sonarr is now: running (Health: healthy)
+[SCRUB-TRIGGER] Scrub is due -- handing off to /usr/local/bin/snapraid-scrub.sh
+```
+
+On the first run there's no previous scrub on record, so a scrub (8% of the array) starts right after the sync. That's expected, and it can take a while. After that, scrubs run at most once every 7 days.
+
+**5. Turn on the nightly timer**
+
+```bash
+sudo systemctl enable --now snapraid-sync.timer
+systemctl list-timers 'snapraid*'
+```
+
+That's it. Next steps, all optional: wait for Sonarr/Radarr imports (`ARR_INSTANCES`), run Docker on another machine (`DOCKER_SSH_DEST`), or silence Uptime Kuma during the pause (`KUMA_MAINTENANCE`).
 
 ## Configuration
 
