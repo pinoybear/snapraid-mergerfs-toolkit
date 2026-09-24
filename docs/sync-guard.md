@@ -28,6 +28,7 @@ Every `POLL_INTERVAL` seconds:
 | `TARGET` | `0` | tmux target (session, `session:window` or pane) the job runs in |
 | `EXPECTED_CMD` | `snapraid` | Pane command while the job is running |
 | `LOG` | `/var/log/snapraid-manual-force-sync.log` | The log the job `tee`s to |
+| `LABEL` | `Manual --force-full sync` | Job name used in alert titles |
 | `POLL_INTERVAL` | `60` | Seconds between checks |
 | `STALL_THRESHOLD` | `1800` | Seconds without log output before a stall alert (30 min) |
 | `EMAIL_ACCOUNT` | `MSMTP_ACCOUNT` from config | |
@@ -55,10 +56,10 @@ Two things that break detection if you get them wrong:
 
 | Title | Priority | When |
 |---|---|---|
-| `Migration step CRASHED: Manual --force-full sync` | 5 (urgent) | The tmux session disappeared entirely |
-| `Migration step possibly STALLED: Manual --force-full sync` | 4 (high) | No new log output for `STALL_THRESHOLD` seconds while the job still shows as running |
-| `Migration step resumed: Manual --force-full sync` | 3 | Output resumed after a stall alert |
+| `Migration step CRASHED: <LABEL>` | 5 (urgent) | The tmux session disappeared entirely |
+| `Migration step possibly STALLED: <LABEL>` | 4 (high) | No new log output for `STALL_THRESHOLD` seconds while the job still shows as running |
+| `Migration step resumed: <LABEL>` | 3 | Output resumed after a stall alert |
 
 Normal completion and failure notifications come from migration-watch, not sync-guard.
 
-> The alert titles currently say "Manual --force-full sync" regardless of what the job is. If you guard a different command, the titles will still read that way.
+When guarding something other than a SnapRAID sync, set `LABEL` to match, and use the same text as migration-watch's `--label` so all notifications for the job read consistently.

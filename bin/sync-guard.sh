@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ===============================================================
 # Script:   sync-guard.sh
-# Version:  1.0.0
+# Version:  1.1.0
 # Date:     2026-09-24
+# v1.1.0: alert titles use $LABEL (default unchanged) instead of a
+#         hardcoded job name.
 # License:  MIT
 # ===============================================================
 # Combined exit + stall guard for a manually-started long-running command
@@ -49,6 +51,7 @@ EMAIL_TO="${_ENV_EMAIL_TO:-$EMAIL_TO}"
 TARGET="${TARGET:-0}"
 EXPECTED_CMD="${EXPECTED_CMD:-snapraid}"
 LOG="${LOG:-/var/log/snapraid-manual-force-sync.log}"
+LABEL="${LABEL:-Manual --force-full sync}"
 POLL_INTERVAL="${POLL_INTERVAL:-60}"
 STALL_THRESHOLD="${STALL_THRESHOLD:-1800}"
 DONE_MARKER="MIGRATION_STEP_DONE"
@@ -102,7 +105,7 @@ while true; do
     if [[ -z "$pane_info" ]]; then
         echo "[sync-guard] tmux session/pane '$TARGET' not found -- treating as crash"
         append_marker "unknown"
-        subject="Migration step CRASHED: Manual --force-full sync"
+        subject="Migration step CRASHED: $LABEL"
         body="tmux session '$TARGET' is gone entirely (not just the job -- the whole session vanished).
 
 Log: $LOG
@@ -148,7 +151,7 @@ This needs manual attention -- check whether the tmux server itself died."
         idle=$(( now - mtime ))
         if (( idle >= STALL_THRESHOLD )); then
             if (( stall_alerted == 0 )); then
-                subject="Migration step possibly STALLED: Manual --force-full sync"
+                subject="Migration step possibly STALLED: $LABEL"
                 body="No new output in the sync log for $((idle/60)) minutes (threshold: $((STALL_THRESHOLD/60))m), but the process is still running.
 
 Log: $LOG
@@ -163,7 +166,7 @@ Check tmux session $TARGET on $(hostname)."
             fi
         else
             if (( stall_alerted == 1 )); then
-                subject="Migration step resumed: Manual --force-full sync"
+                subject="Migration step resumed: $LABEL"
                 body="New output detected in the sync log again after a stall.
 
 Log: $LOG
