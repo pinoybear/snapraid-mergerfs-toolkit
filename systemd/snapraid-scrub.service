@@ -1,0 +1,8 @@
+[Unit]
+Description=SnapRAID scrub (manual start; normally run via snapraid-scrub-check)
+# Don't start while a sync is running
+ConditionPathExists=!/var/lock/snapraid-sync.lock
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/snapraid-scrub.sh

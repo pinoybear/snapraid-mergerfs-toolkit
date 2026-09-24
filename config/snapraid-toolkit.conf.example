@@ -1,0 +1,58 @@
+# ===============================================================
+# File:     /etc/snapraid-toolkit.conf
+# Purpose:  Shared site configuration for every script in
+#           snapraid-mergerfs-toolkit. Sourced by bash, so use bash
+#           syntax. Keep this file root-owned and mode 600 -- it holds
+#           your notification token.
+#
+#           Override the path per-run with SNAPRAID_TOOLKIT_CONF=/path.
+# ===============================================================
+
+# --- Notifications -------------------------------------------------
+# Leave a channel empty to disable it. Both can be enabled at once.
+
+# ntfy (https://ntfy.sh or self-hosted). Full topic URL.
+NTFY_URL=""                  # e.g. "http://ntfy.lan/snapraid"
+NTFY_TOKEN=""                # ntfy access token (tk_...), empty for public topics
+
+# Email via msmtp. EMAIL_TO empty = no email.
+EMAIL_TO=""                  # e.g. "you@example.com"
+MSMTP_ACCOUNT="default"      # account name from /etc/msmtprc
+
+# Friendly name used in notification text. Defaults to hostname.
+HOST_LABEL="$(hostname)"
+
+# --- snapraid-sync.sh ----------------------------------------------
+PARITY_MOUNT="/mnt/parity1"  # checked for existence + fill level before sync
+PARITY_WARN_PERCENT=98       # warn when the parity disk is this full
+LOG_FILE="/var/log/snapraid.log"
+
+# Containers to `docker pause` for the duration of touch+sync, so nothing
+# writes to the array mid-sync (SnapRAID fails on files that change while
+# it is reading them). List anything that writes to your data disks.
+PAUSE_CONTAINERS=()          # e.g. (sonarr radarr sabnzbd nextcloud-app immich_server)
+
+# Where Docker runs. Empty = local `docker`. Otherwise an SSH destination
+# (key auth, no password prompt) used as `ssh <dest> docker ...` -- for
+# setups where the array is exported (e.g. NFS) to a separate Docker VM.
+DOCKER_SSH_DEST=""           # e.g. "user@docker-host"
+
+# Optional: wait for Sonarr/Radarr/Lidarr to finish any in-flight
+# import before pausing. One entry per app: "name|base_url|config_xml_path".
+# The API key is read from the app's own config.xml (on the Docker host,
+# via DOCKER_SSH_DEST if set) so no second copy of the key is stored here.
+ARR_INSTANCES=()             # e.g. ("sonarr|http://docker-host:8989|/opt/stacks/arrs/sonarr/config/config.xml")
+ARR_QUIET_MAX_RETRIES=8
+ARR_QUIET_RETRY_DELAY=15
+
+# Optional: put Uptime Kuma monitors into maintenance for the pause window.
+# Requires kuma-maintenance.py (see bin/) and a Manual-strategy maintenance
+# entry in Kuma. One entry per Kuma instance: "base_url|maintenance_id".
+KUMA_MAINTENANCE=()          # e.g. ("http://kuma.lan:3001|2")
+KUMA_HELPER="/usr/local/bin/kuma-maintenance.py"
+KUMA_CREDENTIALS_FILE="/root/.config/kuma.env"   # defines KUMA_USER / KUMA_PASSWORD
+
+# --- snapraid-scrub.sh / snapraid-scrub-trigger.sh ------------------
+SCRUB_PERCENT=8              # SnapRAID's documented recommendation: -p 8 weekly
+SCRUB_MIN_GAP_DAYS=7
+SCRUB_STATE_FILE="/var/lib/snapraid/last-scrub-run"

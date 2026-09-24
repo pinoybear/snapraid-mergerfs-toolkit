@@ -1,0 +1,12 @@
+[Unit]
+Description=SnapRAID touch + sync (pauses write-churn containers)
+After=network-online.target
+Wants=network-online.target
+# Don't start while a scrub is running
+ConditionPathExists=!/var/lock/snapraid-scrub.lock
+# Chain the (day-gated) scrub off a successful sync
+OnSuccess=snapraid-scrub-check.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/snapraid-sync.sh

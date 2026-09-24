@@ -1,0 +1,9 @@
+[Unit]
+Description=Run SnapRAID sync nightly
+
+[Timer]
+OnCalendar=*-*-* 01:35:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

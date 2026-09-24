@@ -1,0 +1,18 @@
+# Example: watch a manually-started `snapraid --force-full sync` running in
+# tmux session 0 whose output is tee'd to the LOG below. Pair with
+# snapraid-manual-sync-watch.service. Start both after launching the sync.
+[Unit]
+Description=sync-guard.sh exit/crash/stall detector for a manual snapraid sync
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+Environment=TARGET=0
+Environment=EXPECTED_CMD=snapraid
+Environment=LOG=/var/log/snapraid-manual-force-sync.log
+ExecStart=/usr/local/bin/sync-guard.sh
+StandardOutput=append:/var/log/snapraid-manual-sync-guard.log
+StandardError=append:/var/log/snapraid-manual-sync-guard.log
+Restart=on-failure
+RestartSec=30

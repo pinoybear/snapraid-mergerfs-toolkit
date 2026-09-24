@@ -1,0 +1,14 @@
+# Example: decile progress notifications for a manual snapraid sync.
+# See snapraid-manual-sync-guard.service.
+[Unit]
+Description=migration-watch.sh progress watcher for a manual snapraid sync
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/migration-watch.sh --mode snapraid --label "Manual --force-full sync" --log /var/log/snapraid-manual-force-sync.log
+StandardOutput=append:/var/log/snapraid-manual-sync-watch.log
+StandardError=append:/var/log/snapraid-manual-sync-watch.log
+Restart=on-failure
+RestartSec=30

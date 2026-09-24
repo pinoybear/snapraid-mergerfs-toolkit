@@ -1,0 +1,47 @@
+# Example /etc/snapraid.conf for a 4-data + 1-parity array pooled with
+# mergerfs. Adjust mount points to match your system.
+
+parity /mnt/parity1/snapraid.parity
+
+# Keep a content file on at least (parity count + 1) different disks.
+content /var/snapraid.content
+content /mnt/data1/snapraid.content
+content /mnt/data2/snapraid.content
+content /mnt/data3/snapraid.content
+content /mnt/data4/snapraid.content
+
+# SnapRAID tracks disks by filesystem UUID, not by these names, so
+# renaming an entry here doesn't force a re-hash.
+data data1 /mnt/data1/
+data data2 /mnt/data2/
+data data3 /mnt/data3/
+data data4 /mnt/data4/
+
+# Scratch/cache data that changes constantly and isn't worth parity.
+exclude .snapshots/
+exclude /downloads/
+exclude /lost+found/
+exclude /tmp/
+exclude /temp/
+# e.g. NVR recordings, metrics databases, generated thumbnails/transcodes:
+# exclude /frigate/
+# exclude /influxdb/
+# exclude /immich/upload/thumbs/
+# exclude /immich/upload/encoded-video/
+
+# Database locks, WALs, journals -- always changing mid-sync
+exclude *.sqlite-wal
+exclude *.sqlite-shm
+exclude *.sqlite-journal
+exclude *.db-wal
+exclude *.db-shm
+exclude *.db-journal
+exclude *.wal
+exclude *.shm
+exclude *.bolt
+exclude *.ldb
+
+# Actively-written application logs / queue and index dirs, e.g.:
+# exclude /nextcloud/data/nextcloud.log
+# exclude /git/gitea/queues/
+# exclude /git/gitea/indexers/

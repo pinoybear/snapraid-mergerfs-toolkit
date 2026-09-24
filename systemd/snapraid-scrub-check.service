@@ -1,0 +1,6 @@
+[Unit]
+Description=SnapRAID scrub day-gate (runs after a successful nightly sync)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/snapraid-scrub-trigger.sh
